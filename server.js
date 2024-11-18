@@ -4,21 +4,21 @@ const bodyParser = require('body-parser');
 var urlEncodeParser = bodyParser.urlencoded({extended:true});
 
 const path = require('path');
+const cors = require('cors');
 
-//const cors = require('cors');
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId, Timestamp } = require('mongodb');
 
 let port = 3001;
 
 const uri = 'mongodb+srv://jflg24:YX1gkFQQab8yWq0u@claseux.zciih6l.mongodb.net/?retryWrites=true&w=majority&appName=ClaseUX';
 
-const app = express(); // Inicializando express
+const app = express(); 
 
 app.use(urlEncodeParser);
 
-//app.use(cors());
+app.use(cors());
 
-//app.options('*', cors());
+app.options('*', cors());
 
 const client = new MongoClient(uri, {
     serverApi:{
@@ -41,22 +41,23 @@ app.listen(port, () => {
     run();
 }); 
 
-
 /*sign up*/
 app.post('/signUp', async (req, res)=>{
-
     try{
         const cliente = new MongoClient(uri);
         //conectarse a la db
-        const database = cliente.db('ClaseEmergentes');
+        const database = cliente.db('SmartLearn');
         //seleccionar la coleccion
-        const collection = database.collection('Usuarios');
+        const collection = database.collection('Users');
         //insertar un documento
         const resultado = await collection.insertOne({
-            usuario: req.body.usuario,
-            contrasena: req.body.contrasena,
-            //firebaseid: firebaseResult.user.id,
-            ...req.body
+            name: req.body.name,
+            lastName: req.body.lastName,
+            mail: req.body.mail,
+            password: req.body.password,
+            institutionID: req.body.institutionID,
+            role: req.body.role,
+            registerDate: new Date()
         });
         console.log(resultado);
         console.log('Usuario creado con exito');
@@ -70,36 +71,31 @@ app.post('/signUp', async (req, res)=>{
             message: "No se pudo crear el usuario"+error
         });
     }
-    
-    // res.status(200).send({s
-    //     message: 'Usuario creado con exito'
-    // });
-});
 
+});
 
 /* login */
 app.post('/login', async (req, res) => {
     try {
         const cliente = new MongoClient(uri);
-
         // Conectarse a la base de datos
-        const database = cliente.db('ClaseEmergentes');
-        const collection = database.collection('Usuarios');
-
+        const database = cliente.db('SmartLearn');
+        //seleccionar la coleccion
+        const collection = database.collection('Users');
         // Buscar el usuario en la base de datos
-        const usuario = await collection.findOne({
-            usuario: req.body.usuario,
-            contrasena: req.body.contrasena
+        const user = await collection.findOne({
+            mail: req.body.mail,
+            password: req.body.password
         });
 
-        if (usuario) {
+        if (user) {
             // Usuario encontrado
             console.log("Login exitoso");
             res.status(200).send({
                 message: "Login exitoso",
                 usuario: {
-                    id: usuario._id,
-                    usuario: usuario.usuario,
+                    id: user._id,
+                    mail: user.mail,
                     // Puedes devolver otros datos si los necesitas
                 }
             });
