@@ -64,7 +64,7 @@ app.post('/signUp', async (req, res)=>{
         });
 
         const verifyInstitutionID = await collection2.findOne({
-            name: req.body.institutionID
+            _id: new ObjectId(req.body.institutionID)
         });
 
         if(verifyMail){
