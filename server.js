@@ -41,7 +41,7 @@ app.listen(port, () => {
     run();
 }); 
 
-/*sign up*/
+/* sign up */
 app.post('/signUp', async (req, res)=>{
     try{
         const cliente = new MongoClient(uri);
@@ -49,29 +49,64 @@ app.post('/signUp', async (req, res)=>{
         const database = cliente.db('SmartLearn');
         //seleccionar la coleccion
         const collection = database.collection('Users');
-        //insertar un documento
-        const resultado = await collection.insertOne({
-            name: req.body.name,
-            lastName: req.body.lastName,
-            mail: req.body.mail,
-            password: req.body.password,
-            institutionID: req.body.institutionID,
-            role: req.body.role,
-            registerDate: new Date()
+
+        const collection2 = database.collection("Institutions");
+
+        // Validar que el mail y username sean unicos
+        // Validar que el institutionID exista
+
+        const verifyMail = await collection.findOne({
+            mail: req.body.mail
         });
-        console.log(resultado);
-        console.log('Usuario creado con exito');
-        res.status(200).send({
-            message: "Usuario creado con exito", 
-            resultado: resultado
+
+        const verifyUserName = await collection.findOne({
+            userName: req.body.userName
         });
+
+        const verifyInstitutionID = await collection2.findOne({
+            name: req.body.institutionID
+        });
+
+        if(verifyMail){
+            console.log("Este correo ya esta asociado a una cuenta!");
+            res.status(401).send({
+                message: "Correo invalido"
+            });
+        } else if(verifyUserName){
+            console.log("Este nombre de usuario ya esta asociado a una cuenta!");
+            res.status(401).send({
+                message: "UserName invalido"
+            });
+        } else if(!verifyInstitutionID){
+            console.log("ID de Institucion invalido!");
+            res.status(401).send({
+                message: "IdInstitucion invalido"
+            });
+        } else{
+            //insertar un documento
+            const resultado = await collection.insertOne({
+                name: req.body.name,
+                lastName: req.body.lastName,
+                userName: req.body.userName,
+                mail: req.body.mail,
+                password: req.body.password,
+                institutionID: req.body.institutionID,
+                role: req.body.role,
+                registerDate: new Date()
+            });
+            console.log(resultado);
+            console.log('Usuario creado con exito');
+            res.status(200).send({
+                message: "Usuario creado con exito", 
+                resultado: resultado
+            });
+        }
     }catch(error){
         console.log("No se pudo crear el usuario", error);
         res.status(500).send({
             message: "No se pudo crear el usuario"+error
         });
     }
-
 });
 
 /* login */
@@ -111,6 +146,34 @@ app.post('/login', async (req, res) => {
         console.log("Error en el login", error);
         res.status(500).send({
             message: "Error en el login: " + error
+        });
+    }
+});
+
+/* Create Institution */
+app.post('/CreateInstitution', async (req, res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        //conectarse a la db
+        const database = cliente.db('SmartLearn');
+        //seleccionar la coleccion
+        const collection = database.collection('Institutions');
+        //insertar un documento
+        const resultado = await collection.insertOne({
+            name: req.body.name,
+            address: req.body.address,
+            telephone: req.body.telephone
+        });
+        console.log(resultado);
+        console.log('Institucion creada con exito');
+        res.status(200).send({
+            message: "Institucion creado con exito", 
+            resultado: resultado
+        });
+    }catch(error){
+        console.log("No se pudo crear la institucion", error);
+        res.status(500).send({
+            message: "No se pudo crear la institucion"+error
         });
     }
 });
