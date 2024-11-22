@@ -117,19 +117,71 @@ app.post('/login', async (req, res) => {
         const database = cliente.db('SmartLearn');
         //seleccionar la coleccion
         const collection = database.collection('Users');
+        const institutions = database.collection('Institution');
+        const courses = database.collection('Courses')
         // Buscar el usuario en la base de datos
+        console.log(req.body.userName)
+        console.log(req.body.password)
         const user = await collection.findOne({
             userName: req.body.userName,
             password: req.body.password
         });
-
+        
         if (user) {
             // Usuario encontrado
-            console.log("Login exitoso");
-            res.status(200).send({
-                message: "Login exitoso",
-                user: user
-            });
+            const institution = await institutions.findOne({
+                _id: user.institutionID
+            })
+            if(user.role == 'Docente'){
+                //getting assigned courses
+                const assignedCourses = database.collection("Assigned_Courses")
+                const assigned = await assignedCourses.find({
+                    user_id: user._id
+                    
+                }).toArray()
+                console.log(assigned)
+                const courseIds = assigned.map((assignment) => assignment.course_id);
+                console.log(courseIds)
+                const coursesAssigned = await courses.find({ _id: { $in: courseIds } }).toArray();
+                console.log(coursesAssigned)
+
+                const updatedCourses = await Promise.all(coursesAssigned.map(async (course) => {
+                    const user = await collection.findOne({ _id: course.user_id });
+                    return {
+                        ...course,
+                        user_name: user.userName
+                    };
+                }));
+                console.log(updatedCourses)
+                //sending
+                res.status(200).send({
+                    message: "Login exitoso",
+                    user: user,
+                    institution: institution,
+                    courses: updatedCourses
+                });
+            }else{
+                //getting created courses
+                const createdCourses = await courses.find({
+                    user_id: user._id
+                }).toArray()
+                console.log(createdCourses)
+                const updatedCourses = createdCourses.map((course) => {
+ 
+                    return {
+                        ...course,
+                        user_name: user.userName
+                    };
+                })
+                console.log(updatedCourses)
+                //sending
+                res.status(200).send({
+                    message: "Login exitoso",
+                    user: user,
+                    institution: institution,
+                    courses: updatedCourses,
+                });
+            }
         } else {
             // Usuario no encontrado
             console.log("Credenciales inválidas");
@@ -156,9 +208,13 @@ app.post('/CreateInstitution', async (req, res)=>{s
         const collection = database.collection('Institutions');
         
         const resultado = await collection.insertOne({
+            id: req.body,id,
             name: req.body.name,
             address: req.body.address,
-            telephone: req.body.telephone
+            telephone: req.body.telephone,
+            city: req.body.city,
+            country: req.body.country
+            
         });
         console.log(resultado);
         console.log('Institucion creada con exito');
