@@ -433,3 +433,140 @@ app.post("/getFlashcards", async (req, res)=>{
         });
     }
 })
+
+/* createCompletedCourse */
+app.post('/createCompletedCourse', async (req, res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Completed_Courses');
+
+         const resultado = await collection.insertOne({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        });
+        console.log(resultado);
+        console.log('Curso completado creado con exito!');
+        res.status(200).send({
+            message: "Curso completado creado con exito!", 
+            resultado: resultado
+        });   
+    }catch(error){
+        console.log("No se pudo asignar el curso completado!", error);
+        res.status(500).send({
+            message: "No se pudo asignar el curso completado!"+error
+        });
+    }
+});
+
+/* createModule */
+app.post('/createModule', async (req, res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Modules');
+
+         const resultado = await collection.insertOne({
+            course_id: new ObjectId(req.body.course_id),
+            name: req.body.name
+        });
+        console.log(resultado);
+        console.log('Modulo creado con exito!');
+        res.status(200).send({
+            message: "Modulo creado con exito!", 
+            resultado: resultado
+        });   
+    }catch(error){
+        console.log("No se pudo crear el modulo!", error);
+        res.status(500).send({
+            message: "No se pudo crear el modulo"+error
+        });
+    }
+});
+
+/* createSummary */
+app.post('/createSummary', async (req, res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Summaries');
+
+         const resultado = await collection.insertOne({
+            course_id: new ObjectId(req.body.course_id),
+            summary: req.body.summary
+        });
+        console.log(resultado);
+        console.log('Resumen creado con exito!');
+        res.status(200).send({
+            message: "Resumen creado con exito!", 
+            resultado: resultado
+        });   
+    }catch(error){
+        console.log("No se pudo crear el resumen!", error);
+        res.status(500).send({
+            message: "No se pudo crear el resumen"+error
+        });
+    }
+});
+
+/* createFlashcard */
+app.post('/createFlashcard', async (req, res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Flashcards');
+
+         const resultado = await collection.insertOne({
+            course_id: new ObjectId(req.body.course_id),
+            word: req.body.word,
+            definition: req.body.definition
+        });
+        console.log(resultado);
+        console.log('Flashcard creado con exito!');
+        res.status(200).send({
+            message: "Flashcard creado con exito!", 
+            resultado: resultado
+        });   
+    }catch(error){
+        console.log("No se pudo crear la flashcard!", error);
+        res.status(500).send({
+            message: "No se pudo crear la flashcard"+error
+        });
+    }
+});
+
+/* createModuleVocabulary */
+app.post('/createModuleVocabulary', async (req, res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Module_Vocabulary');
+
+         const resultado = await collection.insertOne({
+            module_id: new ObjectId(req.body.module_id),
+            word: req.body.word,
+            definition: req.body.definition
+        });
+        console.log(resultado);
+        console.log('Module Vocabulary creado con exito!');
+        res.status(200).send({
+            message: "Module Vocabulary creado con exito!", 
+            resultado: resultado
+        });   
+    }catch(error){
+        console.log("No se pudo crear el Module Vocabulary!", error);
+        res.status(500).send({
+            message: "No se pudo crear el Module Vocabulary"+error
+        });
+    }
+});
