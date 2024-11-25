@@ -208,7 +208,7 @@ app.post('/CreateInstitution', async (req, res)=>{s
         const collection = database.collection('Institutions');
         
         const resultado = await collection.insertOne({
-            id: req.body,id,
+            id: req.body.id,
             name: req.body.name,
             address: req.body.address,
             telephone: req.body.telephone,
@@ -357,3 +357,79 @@ app.post('/assignCourse', async (req, res)=>{
         });
     }
 });
+
+/*get Unit info */
+app.post("/getUnits", async (req, res)=>{
+    try{
+        
+        //getting the database
+        
+        const client = new MongoClient(uri);
+        const database = client.db('SmartLearn');
+        
+        const units = database.collection('Modules');
+        const courseUnits = await units.find({ course_id: new ObjectId(req.body.courseId) }).toArray();
+        console.log(courseUnits)
+        //sending data
+        res.status(200).send({
+            message: "Login exitoso",
+            units: courseUnits
+        });
+    }catch(error){
+        console.log("No se pudo conseguir las unidades")
+        res.status(401).send({
+            message: "Login exitoso",
+        });
+    }
+})
+
+app.post("/getUnitInfo", async (req, res)=>{
+    try{
+       
+        //getting the database
+        const client = new MongoClient(uri);
+        const database = client.db('SmartLearn');
+        
+        const vocab = database.collection('Module_Vocabulary');
+    
+        const vocabList= await vocab.find({ module_id: new ObjectId(req.body._id) }).toArray();
+
+        //sending data
+        res.status(200).send({
+            message: "vocab exitoso",
+            vocabList: vocabList
+        });
+    }catch(error){
+        console.log("No se pudo conseguir las unidades")
+        console.log(error)
+        res.status(401).send({
+            message: "Vocab no encontrado"
+        });
+    }
+})
+
+app.post("/getFlashcards", async (req, res)=>{
+    try{
+       
+        //getting the database
+
+        const client = new MongoClient(uri);
+        const database = client.db('SmartLearn');
+        
+        const vocab = database.collection('Flashcards');
+    
+        const flashcards= await vocab.find({course_id: new ObjectId(req.body.courseId) }).toArray();
+        console.log(flashcards)
+        //sending data
+        res.status(200).send({
+            message: "vocab exitoso",
+            flashcards: flashcards
+        });
+    }catch(error){
+        console.log("No se pudo conseguir las flashcards")
+        console.log(error)
+        res.status(401).send({
+            message: "Vocab no encontrado"
+        });
+    }
+})
