@@ -676,3 +676,46 @@ app.get('/getSummaries', async (req,res)=>{
         });
     }
 });
+
+/* getCourseStudents */ 
+app.get('/getCourseStudents', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        
+        const assignedCoursesCollection = database.collection('Assigned_Courses');
+        const usersCollection = database.collection('Users');
+
+        // Paso 1: Obtener los user_id asociados al course_id
+        const assignedCourses = await assignedCoursesCollection.find(
+            { course_id: new ObjectId(req.body.course_id) },
+            { projection: { user_id: 1, _id: 0 } } // Incluir solo `user_id`
+        ).toArray();
+
+        if (assignedCourses.length > 0) {
+            // Extraer los user_id en un arreglo
+            const userIds = assignedCourses.map(course => new ObjectId(course.user_id));
+
+            // Paso 2: Buscar usuarios cuyos `_id` estén en el arreglo `userIds`
+            const users = await usersCollection.find({ _id: { $in: userIds } }).toArray();
+
+            console.log(users);
+            res.status(200).send({
+                message: 'Información obtenida con éxito',
+                resultado: users
+            });
+        } else {
+            console.log('No se encontraron estudiantes para este curso');
+            res.status(404).send({
+                message: 'No se encontraron estudiantes para este curso',
+                resultado: []
+            });
+        }
+    } catch (error) {
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+});
