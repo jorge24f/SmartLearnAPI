@@ -8,9 +8,23 @@ const cors = require('cors');
 
 const { MongoClient, ServerApiVersion, ObjectId, Timestamp } = require('mongodb');
 
+const {initializeApp} = require('firebase/app');
+const { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } = require('firebase/auth');
+
 let port = 3001;
 
 const uri = 'mongodb+srv://jflg24:YX1gkFQQab8yWq0u@claseux.zciih6l.mongodb.net/?retryWrites=true&w=majority&appName=ClaseUX';
+
+//Conexión Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBdz_1QpXyhYzwhoKp58kO-OA0K14G6Vpo",
+    authDomain: "smartlearn-3480c.firebaseapp.com",
+    projectId: "smartlearn-3480c",
+    storageBucket: "smartlearn-3480c.firebasestorage.app",
+    messagingSenderId: "1057644236322",
+    appId: "1:1057644236322:web:e0d7b1882ce9c8d511c47b",
+    measurementId: "G-1QW5M5W3JR"
+  };
 
 const app = express(); 
 
@@ -27,6 +41,9 @@ const client = new MongoClient(uri, {
     }
 }); 
 
+// Initialize Firebase
+const firebaseApp = initializeApp(firebaseConfig);
+
 async function run(){
     try{
         await client.connect();
@@ -41,6 +58,61 @@ app.listen(port, () => {
     run();
 }); 
 
+// signUp with firebase
+app.post('/signUpFirebase', async (req,res)=>{
+    const auth = getAuth(firebaseApp);
+    const email = req.body.email;
+    const password = req.body.password;
+    try{
+        const userCredential = await createUserWithEmailAndPassword(auth,email,password);
+        res.status(200).send({ 
+            descripcion: 'Usuario creado con exito',
+            resultado: userCredential
+        });
+    }catch(error){
+        console.log('Hubo un error al crear el usuario',error);
+        res.status(500).send({ 
+            descripcion: 'No se pudo crear el usuario en firebase',
+            resultado: error
+        });
+    }
+});
+
+// login with firebase
+app.post('/logInFirebase',async (req,res)=>{
+    const auth = getAuth(firebaseApp); 
+    const email = req.body.mail; 
+    const password = req.body.password; 
+    try{
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        res.status(200).send({
+            descripcion: 'Sesion iniciada con exito',
+            resultado: userCredential
+        });
+    }catch(error){
+        res.status(500).send({
+            descripcion: 'No se pudo iniciar sesion',
+            resultado: error
+        });
+    }
+});
+
+// logOut with firebase
+app.post('/logOutFirebase',async (req,res)=>{
+    const auth = getAuth(firebaseApp);
+    try{
+        await signOut(auth);
+        res.status(200).send({
+            descripcion: 'Sesion cerrada con exito'
+        });
+    }catch(error){
+        res.status(500).send({
+            descripcion: 'No se pudo cerrar sesion',
+            resultado: error
+        });
+    }
+});
+
 /* signUp */
 app.post('/signUp', async (req, res)=>{
     try{
@@ -50,7 +122,7 @@ app.post('/signUp', async (req, res)=>{
        
         const collection = database.collection('Users');
 
-        const collection2 = database.collection("Institutions");
+        const collection2 = database.collection("Institution");
 
         // Validar que el mail y username sean unicos
         // Validar que el institutionID exista
@@ -64,7 +136,7 @@ app.post('/signUp', async (req, res)=>{
         });
 
         const verifyInstitutionID = await collection2.findOne({
-            _id: new ObjectId(req.body.institutionID)
+            _id: req.body.institutionID
         });
 
         if(verifyMail){
@@ -89,8 +161,8 @@ app.post('/signUp', async (req, res)=>{
                 lastName: req.body.lastName,
                 userName: req.body.userName,
                 mail: req.body.mail,
-                password: req.body.password,
-                institutionID: new ObjectId(req.body.institutionID),
+                //password: req.body.password,
+                institutionID: req.body.institutionID,
                 role: req.body.role,
                 registerDate: new Date()
             });
@@ -120,13 +192,12 @@ app.post('/login', async (req, res) => {
         const institutions = database.collection('Institution');
         const courses = database.collection('Courses')
         // Buscar el usuario en la base de datos
-        console.log(req.body.userName)
-        console.log(req.body.password)
+        //console.log(req.body.userName)
+        //console.log(req.body.password)
         const user = await collection.findOne({
-            userName: req.body.userName,
-            password: req.body.password
+            mail: req.body.mail
         });
-        
+        console.log(user);
         if (user) {
             // Usuario encontrado
             const institution = await institutions.findOne({
