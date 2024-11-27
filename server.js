@@ -570,3 +570,38 @@ app.post('/createModuleVocabulary', async (req, res)=>{
         });
     }
 });
+
+/* getSummaries */ 
+app.get('/getSummaries', async (req,res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Summaries');
+
+        const findResult = await collection.find({
+            course_id: new ObjectId(req.body.course_id)
+        }).toArray();
+
+        if(findResult.length > 0){
+            console.log(findResult);
+            res.status(200).send({
+                message: 'Informacion obtenida con exito',
+                resultado: findResult
+            });
+        } else{
+            console.log('No se encontraron resumenes');
+            res.status(404).send({
+                message: 'No se encontraron resumenes',
+                resultado: []
+            });
+        }
+    }catch(error){
+        console.log('Ocurrio un error', error);
+        res.status(500).send({
+            message: "algo salio mal",
+            resultado: []
+        });
+    }
+});
