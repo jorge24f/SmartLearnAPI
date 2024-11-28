@@ -645,6 +645,7 @@ app.post('/createModuleVocabulary', async (req, res)=>{
 /* getSummaries */ 
 app.get('/getSummaries', async (req,res)=>{
     try{
+        
         const cliente = new MongoClient(uri);
         
         const database = cliente.db('SmartLearn');
@@ -652,8 +653,8 @@ app.get('/getSummaries', async (req,res)=>{
         const collection = database.collection('Summaries');
 
         const findResult = await collection.find({
-            course_id: new ObjectId(req.body.course_id)
-        }).toArray();
+            course_id: new ObjectId(req.query.course_id)
+        },{ sort: { unit_num: 1 } }).toArray();
 
         if(findResult.length > 0){
             console.log(findResult);
@@ -687,7 +688,7 @@ app.get('/getCourseStudents', async (req, res) => {
         const usersCollection = database.collection('Users');
 
         const assignedCourses = await assignedCoursesCollection.find(
-            { course_id: new ObjectId(req.body.course_id) },
+            { course_id: new ObjectId(req.query.course_id) },
             { projection: { user_id: 1, completion: 1, _id: 0 } } 
         ).toArray();
 
