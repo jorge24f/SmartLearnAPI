@@ -677,7 +677,7 @@ app.get('/getSummaries', async (req,res)=>{
     }
 });
 
-/* getCourseStudents */ 
+/* getCourseStudents */
 app.get('/getCourseStudents', async (req, res) => {
     try {
         const cliente = new MongoClient(uri);
@@ -686,23 +686,34 @@ app.get('/getCourseStudents', async (req, res) => {
         const assignedCoursesCollection = database.collection('Assigned_Courses');
         const usersCollection = database.collection('Users');
 
-        // Paso 1: Obtener los user_id asociados al course_id
         const assignedCourses = await assignedCoursesCollection.find(
             { course_id: new ObjectId(req.body.course_id) },
-            { projection: { user_id: 1, _id: 0 } } // Incluir solo `user_id`
+            { projection: { user_id: 1, completion: 1, _id: 0 } } 
         ).toArray();
 
         if (assignedCourses.length > 0) {
-            // Extraer los user_id en un arreglo
+
             const userIds = assignedCourses.map(course => new ObjectId(course.user_id));
 
-            // Paso 2: Buscar usuarios cuyos `_id` estén en el arreglo `userIds`
-            const users = await usersCollection.find({ _id: { $in: userIds } }).toArray();
+            const users = await usersCollection.find(
+                { _id: { $in: userIds } },
+                { projection: { name: 1, lastName: 1, userName: 1 } }
+            ).toArray();
 
-            console.log(users);
+            const enrichedUsers = users.map(user => {
+                const courseInfo = assignedCourses.find(course => course.user_id.toString() === user._id.toString());
+                return {
+                    name: user.name,
+                    lastName: user.lastName,
+                    userName: user.userName,
+                    completion: courseInfo?.completion ?? null 
+                };
+            });
+
+            console.log(enrichedUsers);
             res.status(200).send({
                 message: 'Información obtenida con éxito',
-                resultado: users
+                resultado: enrichedUsers
             });
         } else {
             console.log('No se encontraron estudiantes para este curso');
