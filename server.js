@@ -15,6 +15,10 @@ let port = 3001;
 
 const uri = 'mongodb+srv://jflg24:YX1gkFQQab8yWq0u@claseux.zciih6l.mongodb.net/?retryWrites=true&w=majority&appName=ClaseUX';
 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI("AIzaSyC0YA4HL1Cfi80UYG3Nr7-qtbHE5uvEn6s");
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 //Conexión Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBdz_1QpXyhYzwhoKp58kO-OA0K14G6Vpo",
@@ -545,8 +549,7 @@ app.post('/createModule', async (req, res)=>{
             course_id: new ObjectId(req.body.course_id),
             name: req.body.name
         });
-        console.log(resultado);
-        console.log('Modulo creado con exito!');
+       
         res.status(200).send({
             message: "Modulo creado con exito!", 
             resultado: resultado
@@ -572,7 +575,6 @@ app.post('/createSummary', async (req, res)=>{
             course_id: new ObjectId(req.body.course_id),
             summary: req.body.summary
         });
-        console.log(resultado);
         console.log('Resumen creado con exito!');
         res.status(200).send({
             message: "Resumen creado con exito!", 
@@ -711,7 +713,7 @@ app.get('/getCourseStudents', async (req, res) => {
                 };
             });
 
-            console.log(enrichedUsers);
+    
             res.status(200).send({
                 message: 'Información obtenida con éxito',
                 resultado: enrichedUsers
@@ -731,3 +733,31 @@ app.get('/getCourseStudents', async (req, res) => {
         });
     }
 });
+
+
+
+app.get("/getPreguntasGeneradas", async (req, res) =>{
+    try{
+        const name = req.query.courseName;
+        const questions = req.query.questions;
+        const units = req.query.units;
+        console.log(name);
+        console.log(questions);
+        
+        const prompt = "genere 5 preguntas relacionada a "+name + " "+units+" teoricas, y no me digas absolutamente nada mas excepto las preguntas, y que las respuestas sigan este formato en json: interface questions{question : string;option1 : string;option2 : string;option3 : string;option4 : string;rightAnswer : number;}, y que no se repitan estas preguntas: " + questions + " y damelo listo para aplicar JSON.parse sin ningun cambio";
+        const result = await model.generateContent(prompt);
+ 
+        const lista = result.response.text().substring(7,result.response.text().length-4);
+        console.log(lista);
+        res.status(200).send({
+            message: "preguntas generadas exitosamente",
+            list: lista
+        });
+    }catch(error){
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+})
