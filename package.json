@@ -14,7 +14,11 @@
     "axios": "^1.7.7",
     "cors": "^2.8.5",
     "express": "^4.21.1",
+    "express-multipart-file-parser": "^0.1.2",
     "firebase": "^11.0.2",
-    "mongodb": "^6.10.0"
+    "firebase-admin": "^13.0.1",
+    "firebase-functions": "^6.1.1",
+    "mongodb": "^6.10.0",
+    "multer": "^1.4.5-lts.1"
   }
 }

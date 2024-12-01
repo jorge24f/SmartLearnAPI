@@ -48,6 +48,21 @@ const client = new MongoClient(uri, {
 // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
 
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const fileParser = require("express-multipart-file-parser");
+const { Readable } = require("stream");
+const { error } = require('console');
+
+const serviceAccount = require(path.join(__dirname, 'firebase-credentials.json'));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  storageBucket: 'smartlearn-3480c.appspot.com' 
+});
+
+app.use(fileParser);
+
 async function run(){
     try{
         await client.connect();
@@ -61,6 +76,64 @@ app.listen(port, () => {
     console.log("Servidor corriendo en el puerto", port)
     run();
 }); 
+
+// upload files
+app.post('/upload', async (req, res) => {
+    try {
+        const storage = admin.storage().bucket("smartlearn-3480c.firebasestorage.app");
+        const file = req.files[0];
+
+        if (!file) {
+            console.log("No file uploaded.");
+            return res.status(400).send("No file uploaded.");
+        }
+
+        const fileStream = Readable.from(file.buffer);
+        const fileUpload = storage.file(file.originalname);
+
+        const writeStream = fileUpload.createWriteStream({
+            metadata: {
+                contentType: file.mimetype
+            }
+        });
+
+        fileStream
+            .pipe(writeStream)
+            .on("error", error => {
+                console.log("Error:", error);
+                res.status(500).send({ message: error.message });
+            })
+            .on("finish", async () => {
+                try {
+                    await fileUpload.makePublic();
+                    const publicUrl = `https://storage.googleapis.com/${storage.name}/${fileUpload.name}`;
+                    console.log("File upload complete");
+
+                    try {
+                        const cliente = new MongoClient(uri);
+                        const database = cliente.db('SmartLearn');
+                        const collection = database.collection('Resources');
+                        const resultado = await collection.insertOne({
+                            url: publicUrl,
+                            module_id: new ObjectId(req.body.module_id)
+                        });
+                        console.log(resultado);
+                        console.log("Recurso creado con exito.");
+                    } catch (error) {
+                        console.log("No se puedo crear el recurso", error);  
+                    }
+                    
+                    res.status(200).send({ fileUrl: publicUrl });
+                } catch (error) {
+                    console.log("Error making file public:", error);
+                    res.status(500).send({ message: error.message });
+                }
+            });
+    } catch (error) {
+        console.log("Error:", error);
+        res.status(500).send({ message: error.message });
+    }
+});
 
 // signUp with firebase
 app.post('/signUpFirebase', async (req,res)=>{
