@@ -3,6 +3,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 var urlEncodeParser = bodyParser.urlencoded({extended:true});
 
+const nodemailer = require("nodemailer");
+
 const path = require('path');
 const cors = require('cors');
 const multer = require('multer');
@@ -1028,3 +1030,44 @@ app.get("/getPreguntasGeneradas", async (req, res) =>{
         });
     }
 })
+
+// Endpoint para enviar correos
+app.post("/send-email", async (req, res) => {
+    try {
+        const email = req.query.email;
+        // Configuración del transporte
+        const transporter = nodemailer.createTransport({
+            service: "gmail", 
+            auth: {
+                user: "smartlearnemergentes@gmail.com", 
+                pass: "hcda zfci qiez mzmw", 
+            },
+        });
+
+        // Detalles del correo
+        const mailOptions = {
+            from: "smartlearnemergentes@gmail.com",
+            to: email, // Dirección recibida del frontend
+            subject: "Gracias por contactarnos",
+            text: `Hola,
+
+Gracias por ponerte en contacto con nosotros. Este es un mensaje de confirmación para informarte que hemos recibido tu solicitud. 
+
+Nos pondremos en contacto contigo a la brevedad posible para responder tus preguntas o comentarios.
+
+Si tienes alguna consulta urgente, no dudes en escribirnos directamente a este correo.
+
+Saludos cordiales,
+El equipo de SmartLearn
+`,
+        };
+
+        // Enviar correo
+        await transporter.sendMail(mailOptions);
+        console.log("Correo enviado exitosamente.");
+        res.status(200).send("Correo enviado exitosamente.");
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error al enviar el correo.");
+    }
+});
