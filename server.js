@@ -1071,3 +1071,38 @@ El equipo de SmartLearn
         res.status(500).send("Error al enviar el correo.");
     }
 });
+
+/* getCourseProgress */
+app.get('/getCourseProgress', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Assigned_Courses');
+
+        const findResult = await collection.find({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        }).toArray();
+
+        if (findResult.length > 0) {
+            console.log(findResult);
+            res.status(200).send({
+                message: 'Progreso obtenido con éxito',
+                resultado: findResult[0].completion
+            });
+        } else {
+            console.log('No se encontró progreso para este usuario y curso');
+            res.status(404).send({
+                message: 'No se encontró progreso para este usuario y curso',
+                resultado: []
+            });
+        }
+    } catch (error) {
+        console.log('Ocurrió un error:', error);
+        res.status(500).send({
+            message: 'Algo salió mal',
+            resultado: []
+        });
+    }
+})
