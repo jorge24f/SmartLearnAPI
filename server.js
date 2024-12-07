@@ -5,7 +5,8 @@ var urlEncodeParser = bodyParser.urlencoded({extended:true});
 
 const path = require('path');
 const cors = require('cors');
-
+const multer = require('multer');
+const upload = multer();
 const { MongoClient, ServerApiVersion, ObjectId, Timestamp } = require('mongodb');
 
 const {initializeApp} = require('firebase/app');
@@ -134,6 +135,194 @@ app.post('/upload', async (req, res) => {
         res.status(500).send({ message: error.message });
     }
 });
+
+
+app.post('/uploadImage', async (req, res) => {
+    try {
+        const storage = admin.storage().bucket("smartlearn-3480c.firebasestorage.app");
+        const file = req.files[0];
+
+        if (!file) {
+            console.log("No file uploaded.");
+            return res.status(400).send("No file uploaded.");
+        }
+
+        const fileStream = Readable.from(file.buffer);
+        const fileUpload = storage.file(file.originalname);
+
+        const writeStream = fileUpload.createWriteStream({
+            metadata: {
+                contentType: file.mimetype
+            }
+        });
+
+        fileStream
+            .pipe(writeStream)
+            .on("error", error => {
+                console.log("Error:", error);
+                res.status(500).send({ message: error.message });
+            })
+            .on("finish", async () => {
+                try {
+                    await fileUpload.makePublic();
+                    const publicUrl = `https://storage.googleapis.com/${storage.name}/${fileUpload.name}`;
+                    console.log("File upload complete");
+                    
+                    res.status(200).send({ fileUrl: publicUrl });
+                } catch (error) {
+                    console.log("Error making file public:", error);
+                    res.status(500).send({ message: error.message });
+                }
+            });
+    } catch (error) {
+        console.log("Error:", error);
+        res.status(500).send({ message: error.message });
+    }
+});
+
+app.post('/addResource', async (req, res) => {
+    try {
+    
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Resources');
+        const resultado = await collection.insertOne({
+                        url: req.body.publicUrl,
+                        module_id: new ObjectId(req.body.module_id)
+        });
+
+        console.log(resultado);
+        console.log("Recurso creado con exito.");                
+                    
+        res.status(200).send({ resultado : resultado });
+                
+    } catch (error) {
+        console.log("Error:", error);
+        res.status(500).send({ message: error.message });
+    }
+});
+
+app.post('/addExample', async (req, res) => {
+    try {
+    
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Examples');
+        const resultado = await collection.insertOne({
+                        url: req.body.publicUrl,
+                        module_id: new ObjectId(req.body.module_id)
+        });
+
+        console.log(resultado);
+        console.log("Ejemplo creado con exito.");                
+                    
+        res.status(200).send({ resultado : resultado });
+                
+    } catch (error) {
+        console.log("Error:", error);
+        res.status(500).send({ message: error.message });
+    }
+});
+
+app.post('/addExamQuestion', async (req, res) => {
+    try {
+    
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Exam_Questions');
+        const resultado = await collection.insertOne({
+                        course_id: new ObjectId(req.body.course_id),
+                        question: req.body.question,
+                        optionA : req.body.optionA,
+                        optionB : req.body.optionB,
+                        optionC : req.body.optionC,
+                        optionD : req.body.optionD,
+                        answer : Number(req.body.answer)
+
+        });
+
+        console.log(resultado);
+        console.log("Ejemplo creado con exito.");                
+                    
+        res.status(200).send({ resultado : resultado });
+                
+    } catch (error) {
+        console.log("Error:", error);
+        res.status(500).send({ message: error.message });
+    }
+});
+
+app.post("/createFlashcards", async (req, res) =>{
+    try{
+        const vocab = req.body.vocab;
+        const name = req.body.name;
+        const id = req.body.course_id;
+        const prompt = "genere 4 flashcards, con concepto y definicion simple, relevantes relacionadas a " +name  +" que no sean ninguna de estas palabras :" + vocab +" que sigan este formato json: {word: string, definition : string}" 
+        const result = await model.generateContent(prompt);
+ 
+        const lista = result.response.text().substring(7,result.response.text().length-4);
+        const list = JSON.parse(lista)
+        const trueList = list.map((item)=>({
+            course_id: new ObjectId(id),
+            word: item.word,
+            definition: item.definition
+        }))
+        
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Flashcards');
+        const response = await collection.insertMany(trueList);
+        res.status(200).send({
+            message: "flashcards generadas exitosamente",
+            prompt: prompt,
+            list: trueList
+        });
+    }catch(error){
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+})
+
+app.post("/createSummaries", async (req, res) =>{
+    try{
+        
+        const units = req.body.units;
+        const name = req.body.name;
+        const id = req.body.course_id;
+        const prompt = "genere un resumen para cada unidad de las siguientes: " + units+ " del curso " + name +" en orden en que aparecen, y en la siguiente estructura json: { summary: string }, sin comentarios para parcearlo directamentea la lista"
+        const result = await model.generateContent(prompt);
+ 
+        const lista = result.response.text().substring(7,result.response.text().length-4);
+        const list = JSON.parse(lista)
+        const trueList = list.map((item, index)=>({
+            course_id: new ObjectId(id),
+            summary: item.summary,
+            unit_num: index+1
+   
+        }))
+        cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Summaries');
+        const response = await collection.insertMany(trueList);
+
+
+        res.status(200).send({
+            message: "flashcards generadas exitosamente",
+            response : result.response.text(),
+            prompt: prompt,
+            list: trueList
+        });
+    }catch(error){
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+})
 
 // signUp with firebase
 app.post('/signUpFirebase', async (req,res)=>{
@@ -388,14 +577,17 @@ app.post('/createCourse', async (req, res)=>{
         const collection = database.collection('Courses');
 
         const resultado = await collection.insertOne({
-            institutionID: new ObjectId(req.body.institutionID),
-            user_id: new ObjectId(req.body.user_id),
+            institutionID: req.body.institutionID,
             name: req.body.name,
+            user_id: new ObjectId(req.body.user_id),
             description: req.body.description,
+            image : req.body.image,
+            completion: req.body.completion,
             creationDate: new Date()
         });
         console.log(resultado);
         console.log('Curso creado con exito');
+
         res.status(200).send({
             message: "Curso creado con exito", 
             resultado: resultado
@@ -620,7 +812,8 @@ app.post('/createModule', async (req, res)=>{
 
          const resultado = await collection.insertOne({
             course_id: new ObjectId(req.body.course_id),
-            name: req.body.name
+            name: req.body.name,
+            number: req.body.number
         });
        
         res.status(200).send({
@@ -701,7 +894,8 @@ app.post('/createModuleVocabulary', async (req, res)=>{
          const resultado = await collection.insertOne({
             module_id: new ObjectId(req.body.module_id),
             word: req.body.word,
-            definition: req.body.definition
+            definition: req.body.definition,
+            image: req.body.image
         });
         console.log(resultado);
         console.log('Module Vocabulary creado con exito!');
