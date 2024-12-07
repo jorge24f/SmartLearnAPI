@@ -3,6 +3,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 var urlEncodeParser = bodyParser.urlencoded({extended:true});
 
+const nodemailer = require("nodemailer");
+
 const path = require('path');
 const cors = require('cors');
 const multer = require('multer');
@@ -1105,6 +1107,82 @@ app.get("/getPreguntasGeneradas", async (req, res) =>{
         console.log('Ocurrió un error', error);
         res.status(500).send({
             message: "Algo salió mal",
+            resultado: []
+        });
+    }
+})
+
+// Endpoint para enviar correos
+app.post("/send-email", async (req, res) => {
+    try {
+        const email = req.query.email;
+        // Configuración del transporte
+        const transporter = nodemailer.createTransport({
+            service: "gmail", 
+            auth: {
+                user: "smartlearnemergentes@gmail.com", 
+                pass: "hcda zfci qiez mzmw", 
+            },
+        });
+
+        // Detalles del correo
+        const mailOptions = {
+            from: "smartlearnemergentes@gmail.com",
+            to: email, // Dirección recibida del frontend
+            subject: "Gracias por contactarnos",
+            text: `Hola,
+
+Gracias por ponerte en contacto con nosotros. Este es un mensaje de confirmación para informarte que hemos recibido tu solicitud. 
+
+Nos pondremos en contacto contigo a la brevedad posible para responder tus preguntas o comentarios.
+
+Si tienes alguna consulta urgente, no dudes en escribirnos directamente a este correo.
+
+Saludos cordiales,
+El equipo de SmartLearn
+`,
+        };
+
+        // Enviar correo
+        await transporter.sendMail(mailOptions);
+        console.log("Correo enviado exitosamente.");
+        res.status(200).send("Correo enviado exitosamente.");
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error al enviar el correo.");
+    }
+});
+
+/* getCourseProgress */
+app.get('/getCourseProgress', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Assigned_Courses');
+
+        const findResult = await collection.find({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        }).toArray();
+
+        if (findResult.length > 0) {
+            console.log(findResult);
+            res.status(200).send({
+                message: 'Progreso obtenido con éxito',
+                resultado: findResult[0].completion
+            });
+        } else {
+            console.log('No se encontró progreso para este usuario y curso');
+            res.status(404).send({
+                message: 'No se encontró progreso para este usuario y curso',
+                resultado: []
+            });
+        }
+    } catch (error) {
+        console.log('Ocurrió un error:', error);
+        res.status(500).send({
+            message: 'Algo salió mal',
             resultado: []
         });
     }

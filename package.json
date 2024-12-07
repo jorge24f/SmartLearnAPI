@@ -19,7 +19,8 @@
     "firebase-admin": "^13.0.1",
     "firebase-functions": "^6.1.1",
     "mongodb": "^6.10.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16"
   },
   "devDependencies": {
     "@types/multer": "^1.4.12"
