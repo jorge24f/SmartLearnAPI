@@ -650,7 +650,7 @@ app.get('/getExamQuestions', async (req,res)=>{
         }).toArray();
 
         if(findResult.length > 0){
-            console.log(findResult);
+   
             res.status(200).send({
                 message: 'Informacion obtenida con exito',
                 resultado: findResult
@@ -771,7 +771,7 @@ app.post("/getUnits", async (req, res)=>{
       
         const units = database.collection('Modules');
         const courseUnits = await units.find({ course_id: new ObjectId(req.body.courseId) }).toArray();
-        console.log(courseUnits)
+      
         //sending data
         res.status(200).send({
             message: "Login exitoso",
@@ -1019,6 +1019,7 @@ app.get('/getSummaries', async (req,res)=>{
 /* getCourseStudents */
 app.get('/getCourseStudents', async (req, res) => {
     try {
+        
         const cliente = new MongoClient(uri);
         const database = cliente.db('SmartLearn');
         
@@ -1083,16 +1084,23 @@ app.get('/getNotCourseStudents', async (req, res) => {
             { course_id: new ObjectId(req.query.course_id) },
             { projection: { user_id: 1, completion: 1, _id: 0 } } 
         ).toArray();
+        const completedCollection = database.collection('Completed_Courses');
 
+        const completedCourses = await completedCollection.find(
+            { course_id: new ObjectId(req.query.course_id) },
+            { projection: { user_id: 1, completion: 1, _id: 0 } } 
+        ).toArray();
 
 
             const userIds = assignedCourses.map(course => new ObjectId(course.user_id));
-
+            const userIds2 = completedCourses.map(course => new ObjectId(course.user_id));
+            const ids = [...userIds, ...userIds2];
             let users = await usersCollection.find(
-                { _id: { $nin: userIds } },
-                { projection: { name: 1, lastName: 1, userName: 1, role : 1} }
+                { _id: { $nin: ids } },
+                { projection: { name: 1, lastName: 1, userName: 1, role : 1, institutionID : 1} }
             ).toArray();
-            users = users.filter((user)=>user.role == "Docente")
+
+            users = users.filter((user)=>user.role == "Docente" && user.institutionID==req.query.institutionID)
             const enrichedUsers = users.map(user => {
                 const courseInfo = assignedCourses.find(course => course.user_id.toString() === user._id.toString());
                 return {
@@ -1104,12 +1112,11 @@ app.get('/getNotCourseStudents', async (req, res) => {
                 };
             });
 
-            console.log(enrichedUsers)
+           
             res.status(200).send({
                 message: 'Información obtenida con éxito',
                 resultado: enrichedUsers
             });
-   
     } catch (error) {
         console.log('Ocurrió un error', error);
         res.status(500).send({
@@ -1119,6 +1126,50 @@ app.get('/getNotCourseStudents', async (req, res) => {
     }
 });
 
+app.get('/getCourseCompletedStudents', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        
+        const assignedCoursesCollection = database.collection('Completed_Courses');
+        const usersCollection = database.collection('Users');
+
+        const assignedCourses = await assignedCoursesCollection.find(
+            { course_id: new ObjectId(req.query.course_id) },
+            { projection: { user_id: 1, completion: 1, _id: 0} } 
+        ).toArray();
+
+            const userIds = assignedCourses.map(course => new ObjectId(course.user_id));
+
+            let users = await usersCollection.find(
+                { _id: { $in: userIds } },
+                { projection: { name: 1, lastName: 1, userName: 1, role : 1, institutionID : 1} }
+            ).toArray();
+            //users = users.filter((user)=user.role == "Docente" && user.institutionID == req.query.institutionID)
+            const enrichedUsers = users.map(user => {
+                const courseInfo = assignedCourses.find(course => course.user_id.toString() === user._id.toString());
+                return {
+                    id: user._id,
+                    name: user.name,
+                    lastName: user.lastName,
+                    userName: user.userName,
+                    completion: courseInfo?.completion ?? null 
+                };
+            });
+
+            
+            res.status(200).send({
+                message: 'Información obtenida con éxito',
+                resultado: enrichedUsers
+            });
+    } catch (error) {
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+});
 
 
 app.get("/getPreguntasGeneradas", async (req, res) =>{
