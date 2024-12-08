@@ -294,7 +294,7 @@ app.post("/createSummaries", async (req, res) =>{
         const units = req.body.units;
         const name = req.body.name;
         const id = req.body.course_id;
-        const prompt = "genere un resumen para cada unidad de las siguientes: " + units+ " del curso " + name +" en orden en que aparecen, y en la siguiente estructura json: { summary: string }, sin comentarios para parcearlo directamentea la lista"
+        const prompt = "genere un resumen para cada unidad de las siguientes: " + units+ " del curso " + name +" en orden en que aparecen, y en la siguiente estructura json: { summary: string }, sin comentarios para parcearlo directamentea la lista. Que estos resumenes den una idea clara, de modo que se pueda entender lo basico del tema."
         const result = await model.generateContent(prompt);
  
         const lista = result.response.text().substring(7,result.response.text().length-4);
@@ -584,10 +584,10 @@ app.post('/createCourse', async (req, res)=>{
             user_id: new ObjectId(req.body.user_id),
             description: req.body.description,
             image : req.body.image,
-            completion: req.body.completion,
+            completionRequirement: Number(req.body.completion),
             creationDate: new Date()
         });
-        console.log(resultado);
+
         console.log('Curso creado con exito');
 
         res.status(200).send({
@@ -613,6 +613,40 @@ app.get('/getCursosCreados', async (req,res)=>{
 
         const findResult = await collection.find({
             user_id: new ObjectId(req.query.user_id)
+        }).toArray();
+
+        if(findResult.length > 0){
+            console.log(findResult);
+            res.status(200).send({
+                message: 'Informacion obtenida con exito',
+                resultado: findResult
+            });
+        } else{
+            console.log('No se encontraron cursos para este usuario');
+            res.status(404).send({
+                message: 'No se encontraron cursos para este usuario',
+                resultado: []
+            });
+        }
+    }catch(error){
+        console.log('Ocurrio un error', error);
+        res.status(500).send({
+            message: "algo salio mal",
+            resultado: []
+        });
+    }
+});
+
+app.get('/getExamQuestions', async (req,res)=>{
+    try{
+        const cliente = new MongoClient(uri);
+        
+        const database = cliente.db('SmartLearn');
+        
+        const collection = database.collection('Exam_Questions');
+
+        const findResult = await collection.find({
+            course_id: new ObjectId(req.query.course_id)
         }).toArray();
 
         if(findResult.length > 0){
@@ -759,13 +793,20 @@ app.post("/getUnitInfo", async (req, res)=>{
         const database = client.db('SmartLearn');
         
         const vocab = database.collection('Module_Vocabulary');
+        const examples = database.collection('Examples');
+        const  resources = database.collection('Resources');
     
-        const vocabList= await vocab.find({ module_id: new ObjectId(req.body._id) }).toArray();
-
+        const vocabList = await vocab.find({ module_id: new ObjectId(req.body._id) }).toArray();
+        const exampleList = await examples.find({ module_id: new ObjectId(req.body._id) }).toArray();
+        const resourceList = await resources.find({ module_id: new ObjectId(req.body._id) }).toArray();
+        console.log(exampleList)
+        console.log(resourceList)
         //sending data
         res.status(200).send({
             message: "vocab exitoso",
-            vocabList: vocabList
+            vocabList: vocabList,
+            exampleList: exampleList,
+            resourceList: resourceList
         });
     }catch(error){
         console.log("No se pudo conseguir las unidades")
@@ -1043,7 +1084,7 @@ app.get('/getNotCourseStudents', async (req, res) => {
             { projection: { user_id: 1, completion: 1, _id: 0 } } 
         ).toArray();
 
-        if (assignedCourses.length > 0) {
+
 
             const userIds = assignedCourses.map(course => new ObjectId(course.user_id));
 
@@ -1068,13 +1109,7 @@ app.get('/getNotCourseStudents', async (req, res) => {
                 message: 'Información obtenida con éxito',
                 resultado: enrichedUsers
             });
-        } else {
-            console.log('No se encontraron estudiantes para este curso');
-            res.status(404).send({
-                message: 'No se encontraron estudiantes para este curso',
-                resultado: []
-            });
-        }
+   
     } catch (error) {
         console.log('Ocurrió un error', error);
         res.status(500).send({
@@ -1095,6 +1130,28 @@ app.get("/getPreguntasGeneradas", async (req, res) =>{
         console.log(questions);
         
         const prompt = "genere 5 preguntas relacionada a "+name + " "+units+" teoricas, y no me digas absolutamente nada mas excepto las preguntas, y que las respuestas sigan este formato en json: interface questions{question : string;option1 : string;option2 : string;option3 : string;option4 : string;rightAnswer : number;}, y que no se repitan estas preguntas: " + questions + " y damelo listo para aplicar JSON.parse sin ningun cambio";
+        const result = await model.generateContent(prompt);
+ 
+        const lista = result.response.text().substring(7,result.response.text().length-4);
+        console.log(lista);
+        res.status(200).send({
+            message: "preguntas generadas exitosamente",
+            list: lista
+        });
+    }catch(error){
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+})
+
+app.post("/generatePreguntasFlashcards", async (req, res) =>{
+    try{
+      
+        
+        const prompt = "genere 4 preguntas teoricas de selección multiple, una para cada una de estas cartas: "+req.body.flashcards + ", Por cada pregunta, se mostrará la definición de la flashcard, y 4 opciones, con una de ellas siendo la palabra correcta, y no me digas absolutamente nada mas excepto las preguntas, y que las respuestas sigan este formato en json: interface questions{definition : string;option1 : string;option2 : string;option3 : string;option4 : string;rightAnswer : number;}, y damelo listo para aplicar JSON.parse sin ningun cambio";
         const result = await model.generateContent(prompt);
  
         const lista = result.response.text().substring(7,result.response.text().length-4);
@@ -1153,6 +1210,102 @@ El equipo de SmartLearn
     }
 });
 
+
+app.post('/updateCompletion', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Assigned_Courses');
+
+        const findResult = await collection.updateOne({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        },{
+            $set: {
+                completion: Number(req.body.completion)
+            }
+        })
+          
+        res.status(200).send({
+            message: 'Completación actualizada con éxito',
+        });
+    
+    } catch (error) {
+        console.log('Ocurrió un error:', error);
+        res.status(500).send({
+            message: 'Algo salió mal',
+            resultado: []
+        });
+    }
+})
+
+app.post('/updateScoreCompleted', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Completed_Courses');
+
+        const findResult = await collection.updateOne({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        },{
+            $set: {
+                score: Number(req.body.completion)
+            }
+        })
+          
+        res.status(200).send({
+            message: 'Completación actualizada con éxito',
+        });
+    
+    } catch (error) {
+        console.log('Ocurrió un error:', error);
+        res.status(500).send({
+            message: 'Algo salió mal',
+            resultado: []
+        });
+    }
+})
+
+
+app.post('/completeCourse', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+
+        const database = cliente.db('SmartLearn');
+        const collection = database.collection('Assigned_Courses');
+
+        const findResult = await collection.deleteOne({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        })
+        const collection2 = database.collection('Completed_Courses');
+        const find = await collection2.find({
+            user_id: new ObjectId(req.body.user_id),
+            course_id: new ObjectId(req.body.course_id)
+        }).toArray()
+        if(find.length == 0){
+            const resultado = await collection2.insertOne({
+                user_id: new ObjectId(req.body.user_id),
+                course_id: new ObjectId(req.body.course_id),
+                score: Number(req.body.completion)
+            });
+        }
+       
+        res.status(200).send({
+            message: 'Completación eliminada con éxito',
+        });
+    
+    } catch (error) {
+        console.log('Ocurrió un error:', error);
+        res.status(500).send({
+            message: 'Algo salió mal',
+            resultado: []
+        });
+    }
+})
 /* getCourseProgress */
 app.get('/getCourseProgress', async (req, res) => {
     try {
@@ -1162,11 +1315,12 @@ app.get('/getCourseProgress', async (req, res) => {
         const collection = database.collection('Assigned_Courses');
 
         const findResult = await collection.find({
-            user_id: new ObjectId(req.body.user_id),
-            course_id: new ObjectId(req.body.course_id)
+            user_id: new ObjectId(req.query.user_id),
+            course_id: new ObjectId(req.query.course_id)
         }).toArray();
-
+       
         if (findResult.length > 0) {
+            
             console.log(findResult);
             res.status(200).send({
                 message: 'Progreso obtenido con éxito',
