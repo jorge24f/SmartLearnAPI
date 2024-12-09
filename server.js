@@ -538,16 +538,16 @@ app.post('/login', async (req, res) => {
 });
 
 /* createInstitution */
-app.post('/CreateInstitution', async (req, res)=>{s
+app.post('/CreateInstitution', async (req, res)=>{
     try{
         const cliente = new MongoClient(uri);
         
         const database = cliente.db('SmartLearn');
         
-        const collection = database.collection('Institutions');
+        const collection = database.collection('Institution');
         
         const resultado = await collection.insertOne({
-            id: req.body.id,
+            _id: req.body.id,
             name: req.body.name,
             address: req.body.address,
             telephone: req.body.telephone,
@@ -555,7 +555,7 @@ app.post('/CreateInstitution', async (req, res)=>{s
             country: req.body.country
             
         });
-        console.log(resultado);
+      
         console.log('Institucion creada con exito');
         res.status(200).send({
             message: "Institucion creado con exito", 
@@ -616,7 +616,6 @@ app.get('/getCursosCreados', async (req,res)=>{
         }).toArray();
 
         if(findResult.length > 0){
-            console.log(findResult);
             res.status(200).send({
                 message: 'Informacion obtenida con exito',
                 resultado: findResult
@@ -685,7 +684,7 @@ app.get('/getCursosAsignados', async (req,res)=>{
         }).toArray();
 
         if(findResult.length > 0){
-            console.log(findResult);
+      
             res.status(200).send({
                 message: 'Informacion obtenida con exito',
                 resultado: findResult
@@ -799,8 +798,7 @@ app.post("/getUnitInfo", async (req, res)=>{
         const vocabList = await vocab.find({ module_id: new ObjectId(req.body._id) }).toArray();
         const exampleList = await examples.find({ module_id: new ObjectId(req.body._id) }).toArray();
         const resourceList = await resources.find({ module_id: new ObjectId(req.body._id) }).toArray();
-        console.log(exampleList)
-        console.log(resourceList)
+        
         //sending data
         res.status(200).send({
             message: "vocab exitoso",
