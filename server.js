@@ -705,6 +705,59 @@ app.get('/getCursosAsignados', async (req,res)=>{
     }
 });
 
+/* getCursosCompletados */
+app.get('/getCursosCompletados', async (req, res) => {
+    try {
+        const cliente = new MongoClient(uri);
+        const database = cliente.db('SmartLearn');
+        const completedCoursesCollection = database.collection('Completed_Courses');
+        const coursesCollection = database.collection('Courses');
+
+        // Buscar los cursos completados por el usuario
+        const completedCourses = await completedCoursesCollection.find({
+            user_id: new ObjectId(req.query.user_id)
+        }).toArray();
+
+        if (completedCourses.length > 0) {
+            // Obtener los IDs de los cursos completados
+            const courseIds = completedCourses.map(course => course.course_id);
+
+            // Buscar los detalles de los cursos en la colección Courses
+            const courseDetails = await coursesCollection.find({
+                _id: { $in: courseIds }
+            }).toArray();
+
+            // Combinar los datos de los cursos completados con sus detalles
+            const result = completedCourses.map(completed => {
+                const courseDetail = courseDetails.find(course => course._id.equals(completed.course_id));
+                return {
+                    ...completed,
+                    courseName: courseDetail ? courseDetail.name : "Nombre no encontrado"
+                };
+            });
+
+            console.log(result);
+            res.status(200).send({
+                message: 'Información obtenida con éxito',
+                resultado: result
+            });
+        } else {
+            console.log('No se encontraron cursos para este usuario');
+            res.status(404).send({
+                message: 'No se encontraron cursos para este usuario',
+                resultado: []
+            });
+        }
+    } catch (error) {
+        console.log('Ocurrió un error', error);
+        res.status(500).send({
+            message: "Algo salió mal",
+            resultado: []
+        });
+    }
+});
+
+
 /* assignCourse */
 app.post('/assignCourse', async (req, res)=>{
     try{
@@ -1390,3 +1443,64 @@ app.get('/getCourseProgress', async (req, res) => {
         });
     }
 })
+
+/* updateUser */
+app.patch('/updateUser', async (req, res) => {
+    try {
+        const userId = req.body.userId;
+        const name = req.body.name;
+        const lastName = req.body.lastName;
+        const userName = req.body.userName;
+        console.log(userId,name,lastName);
+        // Verificar si se enviaron los datos necesarios
+        if (!userId || (!name && !lastName && !userName)) {
+            return res.status(400).send({
+                message: "Faltan datos para actualizar"
+            });
+        }
+
+        const cliente = new MongoClient(uri);
+        // Conectarse a la base de datos
+        const database = cliente.db('SmartLearn');
+        // Seleccionar la colección de usuarios
+        const collection = database.collection('Users');
+
+        // Buscar al usuario en la base de datos por su ID
+        const user = await collection.findOne({ _id: new ObjectId(userId) });
+        
+        if (!user) {
+            return res.status(404).send({
+                message: "Usuario no encontrado"
+            });
+        }
+
+        // Crear un objeto con los campos que se deben actualizar
+        const updatedFields = {};
+        if (name) updatedFields.name = name;
+        if (lastName) updatedFields.lastName = lastName;
+        if (userName) updatedFields.userName = userName;
+
+        // Actualizar los datos del usuario en la base de datos
+        const result = await collection.updateOne(
+            { _id: new ObjectId(userId) },  // Filtro
+            { $set: updatedFields }  // Actualización
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).send({
+                message: "No se realizaron cambios"
+            });
+        }
+
+        // Responder con éxito
+        res.status(200).send({
+            message: "Usuario actualizado exitosamente"
+        });
+
+    } catch (error) {
+        console.log("Error al actualizar el usuario", error);
+        res.status(500).send({
+            message: "Error al actualizar el usuario: " + error
+        });
+    }
+});
