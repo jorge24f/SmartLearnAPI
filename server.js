@@ -643,7 +643,7 @@ app.get('/getExamQuestions', async (req,res)=>{
         const database = cliente.db('SmartLearn');
         
         const collection = database.collection('Exam_Questions');
-
+        console.log(req.query.course_id)
         const findResult = await collection.find({
             course_id: new ObjectId(req.query.course_id)
         }).toArray();
@@ -732,7 +732,7 @@ app.get('/getCursosCompletados', async (req, res) => {
                 const courseDetail = courseDetails.find(course => course._id.equals(completed.course_id));
                 return {
                     ...completed,
-                    courseName: courseDetail ? courseDetail.name : "Nombre no encontrado"
+                    ...courseDetail
                 };
             });
 
@@ -1415,20 +1415,25 @@ app.get('/getCourseProgress', async (req, res) => {
 
         const database = cliente.db('SmartLearn');
         const collection = database.collection('Assigned_Courses');
-
-        const findResult = await collection.find({
+        const collection2 = database.collection("Completed_Courses");
+        const findResult1 = await collection.find({
             user_id: new ObjectId(req.query.user_id),
             course_id: new ObjectId(req.query.course_id)
         }).toArray();
-       
+        const findResult2 = await collection2.find({
+            user_id: new ObjectId(req.query.user_id),
+            course_id: new ObjectId(req.query.course_id)
+        }).toArray();
+        const findResult = [...findResult1, ...findResult2]
         if (findResult.length > 0) {
             
             console.log(findResult);
             res.status(200).send({
                 message: 'Progreso obtenido con éxito',
-                resultado: findResult[0].completion
+                resultado: findResult[0].completion ? findResult[0].completion : findResult[0].score
             });
         } else {
+            console.log(findResult)
             console.log('No se encontró progreso para este usuario y curso');
             res.status(404).send({
                 message: 'No se encontró progreso para este usuario y curso',
@@ -1443,6 +1448,8 @@ app.get('/getCourseProgress', async (req, res) => {
         });
     }
 })
+
+
 
 /* updateUser */
 app.patch('/updateUser', async (req, res) => {
